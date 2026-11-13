@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b1424">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Boussole">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icone-192.png">
+<link rel="stylesheet" href="mobile.css">
+<title>Boussole</title>
+</head>
+<body>
+<header id="haut">
+  <div class="marque"><img src="icone-192.png" alt=""><b>Boussole</b></div>
+  <nav id="onglets">
+    <button data-o="bord" class="on">Tableau de bord</button>
+    <button data-o="positions">Positions <i id="n-pos"></i></button>
+    <button data-o="marches">Marchés</button>
+    <button data-o="graphique">Graphique</button>
+  </nav>
+  <div class="lien-pc"><span id="pc-point" class="point"></span><span id="pc-txt">Connexion…</span><b id="heure"></b><button id="plein" title="Plein écran" aria-label="Plein écran"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button></div>
+</header>
+
+<main>
+  <section id="o-bord" class="onglet">
+    <div class="col">
+      <div class="carte climat" id="climat"></div>
+      <div class="compteurs" id="compteurs"></div>
+      <div class="carte petite" id="moteur"></div>
+    </div>
+    <div class="col large">
+      <div class="titre"><h2 id="t-opp">Opportunités</h2><small id="s-opp"></small></div>
+      <div class="defile" id="opps"></div>
+      <div class="titre"><h2>À surveiller</h2><small>il manque encore un signal</small></div>
+      <div class="carte liste" id="surv"></div>
+    </div>
+    <div class="col">
+      <div class="carte" id="risque"></div>
+      <div class="carte" id="perf"></div>
+      <div class="titre"><h2>Équipe, alertes et rendez-vous</h2></div>
+      <div class="carte liste" id="fil"></div>
+    </div>
+  </section>
+
+  <section id="o-positions" class="onglet" hidden></section>
+
+  <section id="o-marches" class="onglet" hidden>
+    <div class="filtres" id="filtres"></div>
+    <div id="chaleur"></div>
+  </section>
+
+  <section id="o-graphique" class="onglet" hidden>
+    <div class="carte graph"><div class="g-tete"><div id="g-nom"></div><div class="seg" id="g-tf"><button data-tf="j" class="on">1 J</button><button data-tf="h4">4 h</button><button data-tf="h">1 h</button><button data-tf="s">1 S</button></div></div><div id="g-legende"></div><div id="graph"></div></div>
+    <div class="carte g-info" id="g-info"></div>
+  </section>
+</main>
+
+<div id="bandeau"><div class="piste" id="piste"></div></div>
+
+<div id="tournez" class="voile"><svg viewBox="0 0 64 64"><rect x="20" y="8" width="24" height="44" rx="4"/><path d="M50 30a20 20 0 0 1-12 22M44 50l-6 2 2-6"/></svg><b>Tournez votre téléphone</b><p>Le tableau de bord s’affiche à l’horizontale.</p></div>
+<div id="connexion" class="voile" hidden><img src="icone-192.png" alt="">
+  <div id="cx-epingler" class="cx" hidden><small>Étape 1 sur 2</small><b>Épinglez Boussole sur l’écran d’accueil</b>
+    <p id="cx-comment"></p><p>Ouvrez ensuite Boussole depuis sa nouvelle icône : le code de connexion vous sera demandé à ce moment-là.</p>
+    <button class="lien" id="cx-ici">Continuer sans épingler</button></div>
+  <div id="cx-distant" class="cx" hidden><b>Activez Boussole sur ce téléphone</b>
+    <p>Sur l’ordinateur, ouvrez <b>Réglages › Téléphone</b> et scannez le QR code avec l’appareil photo.</p>
+    <form id="cx-dform"><textarea id="cx-dcode" rows="3" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Ou collez ici le code d’activation"></textarea><button id="cx-dok">Activer</button></form>
+    <p id="cx-derr" class="err"></p></div>
+  <div id="cx-code" class="cx" hidden><small id="cx-etape">Étape 2 sur 2</small><b>Entrez le code affiché sur l’ordinateur</b>
+    <p id="cx-aide">Un code à 6 chiffres vient de s’afficher dans Boussole, sur l’ordinateur.</p>
+    <form id="cx-form"><input id="cx-saisie" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" placeholder="000 000" aria-label="Code à 6 chiffres"><button id="cx-ok">Connecter</button></form>
+    <p id="cx-err" class="err"></p><button type="button" class="lien" id="cx-nouveau">Nouveau code</button></div>
+</div>
+<div id="bandeau-pc" hidden></div>
+
+<script src="lightweight-charts.js"></script>
+<script src="mobile.js"></script>
+</body>
+</html>
