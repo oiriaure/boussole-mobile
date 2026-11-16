@@ -191,8 +191,15 @@ function rendreBord(e) {
 
 // ---------- Positions
 function rendrePositions(e) {
-  const P = e.positions, R = e.resultats;
-  set('#o-positions', `<div class="stats"><div><small>Positions en cours</small><b>${P.length}</b></div><div><small>Risque engagé</small><b>${nb(e.risque.engage, 1)} %</b></div><div><small>Résultat net (terminées)</small><b class="${R.termines ? sens(R.total) : ''}">${R.termines ? esc(R.totalTxt) : '–'}</b></div><div><small>Plans de Boussole réussis</small><b>${e.boussole.taux != null ? nb(e.boussole.taux, 0) + ' %' : '–'}</b></div></div>
+  const P = e.positions, R = e.resultats, F = e.pf100;
+  // 3.15 : le portefeuille d’entraînement de 100 € de l’utilisateur
+  const pf = F ? (() => { const cv = F.courbe || [], lo = Math.min(100, ...cv), hi = Math.max(100, ...cv), k = hi - lo || 1, sg = (v) => `${v >= 0 ? '+' : '−'}${nb(Math.abs(v), 2)} €`;
+    return `<div class="pf100"><h2>Mon portefeuille 100 €</h2><div class="stats"><div><small>Équité</small><b class="${sens(F.equite - 100)}">${nb(F.equite, 2)} €</b></div><div><small>Solde</small><b>${nb(F.solde, 2)} €</b></div><div><small>Perf. / équipe</small><b class="${sens(F.perf)}">${F.perf >= 0 ? '+' : ''}${nb(F.perf, 1)} %</b><small>équipe ${F.equipe >= 0 ? '+' : ''}${nb(F.equipe, 1)} %</small></div><div><small>Drawdown max</small><b>−${nb(F.dd, 1)} %</b></div></div>
+      ${F.risque > F.plafond ? `<p class="pf-alerte">Risque global ${nb(F.risque, 1)} % : au-dessus du plafond de ${F.plafond} %.</p>` : ''}
+      ${cv.length > 1 ? `<svg viewBox="0 0 100 30" preserveAspectRatio="none" class="cc ${sens(cv.at(-1) - 100)}"><polyline points="${cv.map((v, i) => `${(i / (cv.length - 1) * 100).toFixed(1)},${(27 - (v - lo) / k * 24).toFixed(1)}`).join(' ')}"/></svg>` : ''}
+      ${(F.ouvertes || []).map((o) => `<p class="pf-l"><span>${esc(o.nom)}</span><b class="${o.attente ? '' : sens(o.eur)}">${o.attente ? 'en attente' : sg(o.eur)}</b></p>`).join('')}
+      <small>${F.n} trade${F.n > 1 ? 's' : ''} terminé${F.n > 1 ? 's' : ''}, ${F.g} gagnant${F.g > 1 ? 's' : ''} · préparation au 16/12 : ${F.prep} %</small></div>`; })() : '';
+  set('#o-positions', `${pf}<div class="stats"><div><small>Positions en cours</small><b>${P.length}</b></div><div><small>Risque engagé</small><b>${nb(e.risque.engage, 1)} %</b></div><div><small>Résultat net (terminées)</small><b class="${R.termines ? sens(R.total) : ''}">${R.termines ? esc(R.totalTxt) : '–'}</b></div><div><small>Plans de Boussole réussis</small><b>${e.boussole.taux != null ? nb(e.boussole.taux, 0) + ' %' : '–'}</b></div></div>
     ${P.length ? `<div class="pos-grille">${P.map((p) => {
       const lo = Math.min(p.stop, p.objectif), hi = Math.max(p.stop, p.objectif), pos = (v) => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
       return `<button class="pos" data-id="${p.id}"><header><div><h3>${esc(p.nom)}</h3><small>${esc(p.etat)}${p.demi ? ', moitié encaissée' : ''}${p.suiveur ? ', stop suiveur' : ''}</small></div><div class="res"><b class="${p.ouverte ? sens(p.eur) : ''}">${p.ouverte ? esc(p.eurTxt) : '–'}</b><small>${p.ouverte ? `${p.r >= 0 ? '+' : ''}${nb(p.r, 1)} R · ${pct(p.pct, 1)}` : 'en attente d’entrée'}</small></div></header>
