@@ -1,4 +1,4 @@
-// ---------- Boussole sur téléphone : affiche ce que l’ordinateur analyse (lecture seule)
+// ---------- Boussole sur téléphone (3.18 : dashboard refait) : affiche ce que l’ordinateur analyse ; en Wi-Fi, on peut aussi décider en un clic
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const nb = (v, d = 2) => (v == null || !isFinite(v) ? '–' : v.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -14,7 +14,7 @@ const heureC = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit',
 // Le téléphone reçoit alors sa propre clé d’accès, gardée dans l’app épinglée.
 try { localStorage.removeItem('jeton'); } catch {} // ancien système (3.4)
 let JETON = store('appareil', '');
-const S = { e: store('dernier', null), recu: 0, erreurs: 0, onglet: store('onglet', 'bord'), filtre: 'tous', id: store('gid', 'spx'), tf: 'j', chart: null };
+const S = { e: store('dernier', null), recu: 0, erreurs: 0, onglet: store('onglet2', 'accueil'), faits: {}, ouverts: {}, filtre: 'tous', id: store('gid', 'spx'), tf: 'j', chart: null };
 const EPINGLEE = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -162,68 +162,130 @@ function spark(v) {
 }
 const pastille = (m) => `<span class="pastille c-${m.code}">${esc(m.label)}${['achat', 'vente', 'surveiller'].includes(m.code) && m.conf ? ` ${m.conf} %` : ''}</span>`;
 
-// ---------- Tableau de bord
-function rendreBord(e) {
-  // 3.17 : le briefing du matin et le défi du jour
-  const B = e.briefing, Df = e.defi, Pg = e.progression, bEl = document.getElementById('briefing'), dEl = document.getElementById('defi');
-  if (bEl) { bEl.hidden = !B; if (B) set('#briefing', `<small>${B.matin ? 'Briefing du matin' : 'Briefing du jour'} · Claire</small><h2>${esc(B.titre)}</h2><p>${esc(B.synthese)}</p>${(B.priorites || []).map((p, i) => `<p class="pf-l"><span><b>${i + 1}.</b> ${esc(p.titre)}</span></p><small>${esc(p.pourquoi || '')}</small>`).join('')}${B.risque?.plan?.length ? `<p style="margin-top:8px"><b>Risque (${esc(B.risque.etat || '')})</b></p>${B.risque.plan.map((x) => `<small>• ${esc(x)}</small><br>`).join('')}` : ''}${(e.decisions || []).length ? `<p style="margin-top:8px"><b>À décider sur l’ordinateur</b></p>${e.decisions.map((x) => `<small>• ${esc(x.titre)}</small><br>`).join('')}` : ''}`); }
-  if (dEl) { dEl.hidden = !Df; if (Df) set('#defi', `<small>Défi du jour · +${Df.xp} XP${Pg ? ` · niveau ${Pg.niveau} ${esc(Pg.nom)} (${Pg.xp} XP)` : ''}</small><h2>${Df.ok ? '✅ ' : Df.echec ? '❌ ' : '🎯 '}${esc(Df.titre)}</h2><p>${esc(Df.consigne)}</p><small>${esc(Df.masterclass)}</small>${Pg ? `<div class="barre-xp"><i style="width:${Math.round(Pg.pct)}%"></i></div>` : ''}`); }
-  set('#climat', `${boussole(e.climat.code)}<div><small>${e.climat.ia ? 'Point marché de l’IA' : 'Climat général'}</small><b>${esc(e.climat.titre)}</b></div>${e.climat.resume ? `<p>${esc(e.climat.resume)}</p>` : ''}`);
-  set('#compteurs', `<button data-aller="bord"><b>${e.compteurs.opp}</b><span>opportunité${e.compteurs.opp > 1 ? 's' : ''}</span></button><button data-aller="marches"><b>${e.compteurs.surv}</b><span>à surveiller</span></button><button data-aller="positions"><b>${e.compteurs.pos}</b><span>position${e.compteurs.pos > 1 ? 's' : ''}</span></button>`);
-  set('#moteur', `<span class="point ${/ok|actif/.test(e.moteur.classe) ? 'ok' : /err/.test(e.moteur.classe) ? 'ko' : ''}"></span><span><b>${esc(e.moteur.titre)}</b><small>${esc(e.moteur.detail)}</small></span>`);
-  $('#s-opp').textContent = e.opportunites.length ? 'au moins 80 % de confiance' : '';
-  set('#opps', e.opportunites.length ? e.opportunites.map((m) => `<button class="opp" data-id="${m.id}"><header><div><h3>${esc(m.label)} ${esc(m.nom)}</h3><p>${esc(m.plan?.titre || '')}</p></div>${anneau(m.conf)}</header>
-      ${m.plan ? `<div class="niveaux"><div><small>Entrée</small><b>${esc(m.plan.txt.entree)}</b></div><div class="s"><small>Stop −${nb(m.plan.perte, 0)} %</small><b class="down">${esc(m.plan.txt.stop)}</b></div><div class="o"><small>Objectif +${nb(m.plan.gain, 0)} %</small><b class="up">${esc(m.plan.txt.objectif)}</b></div></div>` : ''}
-      <footer><span>Mise ${esc(m.plan?.mise || '–')} · ${m.ouvert ? 'marché ouvert' : 'marché fermé'}</span>${spark(m.spark)}</footer></button>`).join('')
-    : '<div class="vide"><b>Aucun plan assez solide pour l’instant.</b>Les bonnes occasions sont rares : Boussole surveille tous les marchés et vous préviendra.</div>');
-  set('#surv', e.surveiller.length ? e.surveiller.map((m) => `<button class="ligne" data-id="${m.id}"><span><b>${esc(m.nom)}</b><small>${esc(m.quoi)}</small></span><span class="px">${esc(m.px)}<i class="${sens(m.var)}">${pct(m.var)}</i></span>${pastille(m)}</button>`).join('') : '<p class="rien">Rien à surveiller de près pour l’instant.</p>');
-  // jauge du risque engagé (demi-cercle)
-  const f = Math.min(1, e.risque.engage / e.risque.plafond), a = Math.PI * (1 - f), x = 50 + 40 * Math.cos(a), y = 52 - 40 * Math.sin(a);
-  set('#risque', `<svg class="jauge" viewBox="0 0 100 60" width="96"><defs><linearGradient id="gj"><stop offset="0" stop-color="#36d0c8"/><stop offset="1" stop-color="${f > 0.8 ? '#f5b84d' : '#3b9cff'}"/></linearGradient></defs><path class="fond" d="M10 52 A40 40 0 0 1 90 52"/>${f > 0.005 ? `<path class="val" d="M10 52 A40 40 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}" style="stroke:url(#gj)"/>` : ''}<text x="50" y="50" text-anchor="middle">${nb(e.risque.engage, 1)} %</text></svg>
-    <div><b>Risque engagé</b><p>sur ${e.risque.plafond} % autorisés, pour un capital de ${esc(e.risque.capital)}.</p></div>`);
-  const R = e.resultats, cv = R.courbe, lo = Math.min(0, ...cv), hi = Math.max(0, ...cv), k = hi - lo || 1;
-  set('#perf', `<div class="chiffres"><div><small>Résultat net du carnet</small><b class="${R.termines ? sens(R.total) : ''}">${R.termines ? esc(R.totalTxt) : '–'}</b></div><div><small>En unités de risque</small><b class="${R.termines ? sens(R.r) : ''}">${R.termines ? `${R.r >= 0 ? '+' : '−'}${nb(Math.abs(R.r), 1)} R` : '–'}</b></div><div><small>Gagnants</small><b>${R.termines ? `${R.gagnants}/${R.termines}` : '–'}</b></div></div>
-    ${cv.length > 1 ? `<svg viewBox="0 0 100 40" preserveAspectRatio="none" class="cc ${sens(cv.at(-1))}"><polyline points="${[0, ...cv].map((v, i) => `${(i / cv.length * 100).toFixed(1)},${(36 - (v - lo) / k * 32).toFixed(1)}`).join(' ')}"/></svg>` : `<small>${e.boussole.taux != null ? `Plans de Boussole : ${nb(e.boussole.taux, 0)} % de réussite sur ${e.boussole.termines}` : 'La courbe de votre capital apparaîtra après deux trades terminés.'}</small>`}`);
-  const evts = [
-    ...(e.bureau || []).filter((b) => ['valide', 'refuse', 'piste', 'point', 'suivi'].includes(b.type)).slice(0, 4).map((b) => ({ t: b.t, html: `<div class="fil eq"><time>${heureC(b.t)}</time><span><b>${esc(b.de)}${b.a ? ` → ${esc(b.a)}` : ''}</b><p>${esc(b.texte)}</p></span></div>` })),
-    ...e.alertes.slice(0, 6).map((a) => ({ t: a.t, html: `<div class="fil"><time>${heureC(a.t)}</time><span><b>${esc(a.nom)}</b><p>${esc(a.texte)}</p></span></div>` })),
-    ...e.calendrier.filter((c) => c.t > Date.now() - 36e5).slice(0, 4).map((c) => ({ t: 0, html: `<div class="fil evt"><time>${new Date(c.t).toLocaleDateString('fr-FR', { weekday: 'short' })} ${heureC(c.t)}</time><span><b>${esc(c.titre)}</b>${c.fort ? '<i class="fort">FORT</i>' : ''}<p>${c.pays === 'us' ? 'États-Unis' : 'Zone euro'}${c.prevision ? `, prévu ${esc(c.prevision)}` : ''}</p></span></div>` })),
-    ...e.resultatsEntreprises.slice(0, 3).map((r) => ({ t: 0, html: `<div class="fil evt"><time>${new Date(r.t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</time><span><b>Résultats ${esc(r.nom)}</b><p>Le prix peut bouger fortement ce jour-là.</p></span></div>` })),
-  ];
-  set('#fil', evts.length ? evts.map((x) => x.html).join('') : '<p class="rien">Aucune alerte récente.</p>');
+// ---------- 3.18 : DASHBOARD MOBILE (5 onglets en bas, cartes compactes, décisions en un clic)
+const ORDRE = ['accueil', 'positions', 'marches', 'equipe', 'defis'];
+const eu = (v, d = 2) => (v == null || !isFinite(v) ? '–' : nb(v, d) + ' €');
+const sg = (v, d = 2) => (v == null || !isFinite(v) ? '–' : (v >= 0 ? '+' : '−') + nb(Math.abs(v), d) + ' €');
+const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.m); toast.m = setTimeout(() => el.classList.remove('on'), 3200); };
+const vibre = () => { try { navigator.vibrate?.(8); } catch {} };
+function courbe(v, base, h = 64) {
+  if (!v || v.length < 2) return `<div class="courbe vide" style="height:${h}px"><small>La courbe apparaîtra avec vos premiers trades.</small></div>`;
+  const lo = Math.min(base ?? v[0], ...v), hi = Math.max(base ?? v[0], ...v), k = hi - lo || 1, X = (i) => (i / (v.length - 1) * 100).toFixed(2), Y = (x) => (h - 4 - (x - lo) / k * (h - 10)).toFixed(1);
+  const pts = v.map((x, i) => `${X(i)},${Y(x)}`).join(' '), c = sens(v.at(-1) - (base ?? v[0]));
+  return `<svg class="courbe ${c}" viewBox="0 0 100 ${h}" preserveAspectRatio="none" style="height:${h}px"><defs><linearGradient id="gc-${c}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" class="g1"/><stop offset="1" class="g2"/></linearGradient></defs>${base != null ? `<line x1="0" x2="100" y1="${Y(base)}" y2="${Y(base)}" class="base"/>` : ''}<polygon points="0,${h} ${pts} 100,${h}" fill="url(#gc-${c})"/><polyline points="${pts}"/></svg>`;
+}
+const titreSection = (t, s = '', aller = '') => `<div class="sec-t"><h2>${t}</h2>${s ? `<small>${s}</small>` : ''}${aller ? `<button class="voir" data-aller="${aller}">Tout voir ›</button>` : ''}</div>`;
+const ICO_D = { plan: '🎯', seuil: '📍', jour: '⚡', prix: '🔔' };
+
+function carteDecision(D) {
+  return `<article class="deci t-${D.type}"><div class="d-tete"><span class="d-ico">${ICO_D[D.type] || '•'}</span><div><b>${esc(D.titre)}</b><small>${esc(D.nom || '')}${D.fin ? ` · expire à ${heureC(D.fin)}` : ''}</small></div>${D.id ? `<button class="rond petit" data-id="${esc(D.id)}" aria-label="Voir le graphique">›</button>` : ''}</div>
+    <p>${esc(D.texte)}</p>${D.mise ? `<small class="d-mise">Mise conseillée ${esc(D.mise)} · perte maximale ${esc(D.perte)}</small>` : ''}
+    <div class="d-act">${DISTANT ? '<span class="lecture">🔒 En 4G, le téléphone lit seulement : validez sur l’ordinateur (ou connectez-le en Wi-Fi pour décider d’ici).</span>'
+      : `<button class="b-ok" data-agir="executer" data-cle="${esc(D.cle)}">${D.type === 'prix' ? 'Faire analyser' : 'Exécuter'}</button>${D.pf ? `<button class="b-pf" data-agir="pf100" data-cle="${esc(D.cle)}">Dans mes 100 €</button>` : ''}<button class="b-non" data-agir="ignorer" data-cle="${esc(D.cle)}">Ignorer</button>`}</div></article>`;
+}
+async function agir(quoi, cle, bouton) {
+  if (DISTANT || !JETON) return toast('Validez cette décision sur l’ordinateur.');
+  vibre(); $$(`[data-cle="${CSS.escape(cle)}"]`).forEach((b) => { b.disabled = true; }); bouton.classList.add('attente');
+  let r; try { const x = await fetch('/api/action', { method: 'POST', cache: 'no-store', headers: { Authorization: 'Bearer ' + JETON, 'Content-Type': 'application/json' }, body: JSON.stringify({ quoi, cle }) }); r = { ok: x.ok, ...(await x.json().catch(() => ({}))) }; }
+  catch { r = { ok: false, message: 'Ordinateur injoignable.' }; }
+  toast(r.message || r.erreur || (r.ok ? 'Fait.' : 'Impossible pour le moment.'));
+  if (r.ok) { S.faits[cle] = quoi; rendre(); setTimeout(rafraichir, 900); } else $$(`[data-cle="${CSS.escape(cle)}"]`).forEach((b) => { b.disabled = false; b.classList.remove('attente'); });
 }
 
-// ---------- Positions
+function rendreAccueil(e) {
+  const F = e.pf100, J = e.jour100, B = e.briefing, Pg = e.progression, Df = e.defi, D = (e.decisions || []).filter((x) => x.cle && !S.faits[x.cle]);
+  const h = new Date().getHours(), salut = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+  const hero = F ? `<section class="hero"><div class="h-haut"><div><small>Portefeuille d’entraînement</small><b class="gros">${eu(F.equite)}</b></div>
+      <span class="chip ${J ? sens(J.pnl) : ''}">${J ? `${sg(J.pnl)} · ${pct(J.pct, 1)}<small>aujourd’hui</small>` : '–'}</span></div>
+      ${courbe(F.courbe, 100, 70)}
+      <div class="h-kpi"><div><small>Total</small><b class="${sens(F.perf)}">${pct(F.perf, 1)}</b></div><div><small>L’équipe</small><b class="${sens(F.equipe)}">${pct(F.equipe, 1)}</b></div><div><small>Risque</small><b class="${F.risque > F.plafond ? 'down' : ''}">${nb(F.risque, 1)} %</b></div><div><small>Prêt 16/12</small><b>${F.prep} %</b></div></div></section>`
+    : '<section class="hero"><small>Portefeuille d’entraînement</small><p>Mettez Boussole à jour sur l’ordinateur pour voir votre compte 100 € ici.</p></section>';
+  const R = e.resultats, tuiles = `<div class="tuiles">
+      <button class="tuile" data-aller="positions"><small>P&L du jour</small><b class="${J ? sens(J.pnl) : ''}">${J ? sg(J.pnl) : '–'}</b><span>${J ? (J.fermees ? `${J.fermees} trade${J.fermees > 1 ? 's' : ''} clos, ${sg(J.realise)}` : 'latent compris') : ''}</span></button>
+      <button class="tuile" data-aller="positions"><small>Positions</small><b>${e.compteurs.pos}${F?.ouvertes?.length ? ` <i>+${F.ouvertes.length}</i>` : ''}</b><span>carnet${F?.ouvertes?.length ? ' + 100 €' : ''} · risque ${nb(e.risque.engage, 1)} %</span></button>
+      <button class="tuile" data-aller="marches"><small>Opportunités</small><b>${e.compteurs.opp}</b><span>${e.compteurs.surv} à surveiller</span></button>
+      <button class="tuile" data-aller="defis"><small>${Pg ? `Niveau ${Pg.niveau}` : 'Progression'}</small><b>${Pg ? `${Pg.xp} XP` : '–'}</b>${Pg ? `<div class="xp"><i style="width:${Math.round(Pg.pct)}%"></i></div><span>${esc(Pg.nom)}</span>` : ''}</button></div>`;
+  const deci = D.length ? `${titreSection('À décider', `${D.length} prête${D.length > 1 ? 's' : ''} · un clic`)}<div class="pile">${D.map(carteDecision).join('')}</div>` : '';
+  const ouvert = S.ouverts.brief;
+  const brief = B ? `${titreSection(B.matin ? 'Briefing du matin' : 'Briefing du jour', `Claire · ${heureC(B.t)}`)}<article class="carte brief ${ouvert ? 'ouvert' : ''}" data-plier="brief"><h3>${esc(B.titre)}</h3><p class="synth">${esc(B.synthese)}</p>
+      <ol class="prio">${(B.priorites || []).map((p) => `<li><b>${esc(p.titre)}</b>${ouvert && p.pourquoi ? `<small>${esc(p.pourquoi)}</small>` : ''}</li>`).join('')}</ol>
+      ${ouvert && B.risque?.plan?.length ? `<div class="risque-b"><b>Risque · ${esc(B.risque.etat || '')}</b>${B.risque.plan.map((x) => `<small>• ${esc(x)}</small>`).join('')}</div>` : ''}${ouvert && B.mot ? `<p class="mot">« ${esc(B.mot)} »</p>` : ''}<span class="plier">${ouvert ? 'Réduire' : 'Lire tout'}</span></article>` : '';
+  const P0 = (e.feed || [])[0], nFeed = (e.feed || []).length;
+  const raccourcis = `<div class="raccourcis"><button class="carte rac" data-aller="equipe"><span class="r-ico">💬</span><b>Feed de l’équipe</b><small>${P0 ? esc(P0.titre) : 'Les débats apparaîtront ici'}</small>${nFeed ? `<i>${nFeed}</i>` : ''}</button>
+      <button class="carte rac" data-aller="defis"><span class="r-ico">${Df?.ok ? '✅' : '🎯'}</span><b>Défi du jour</b><small>${Df ? esc(Df.titre) : '–'}</small>${Df ? `<i>+${Df.xp}</i>` : ''}</button></div>`;
+  const cl = `<button class="carte climat" data-aller="equipe">${boussole(e.climat.code, 46)}<div><small>${e.climat.ia ? 'Point marché de Claire' : 'Climat général'}</small><b>${esc(e.climat.titre)}</b></div></button>`;
+  const opps = e.opportunites.length ? `${titreSection('Opportunités', 'au moins 80 % de confiance', 'marches')}<div class="defile">${e.opportunites.map(carteOpp).join('')}</div>` : '';
+  set('#o-accueil', `<div class="salut"><h1>${salut}</h1><small>${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</small></div>
+    <div class="grille"><div class="col">${hero}${tuiles}${deci}</div><div class="col">${brief}${raccourcis}${cl}${opps}</div></div>`);
+}
+function carteOpp(m) {
+  return `<button class="opp" data-id="${m.id}"><header><div><h3>${esc(m.nom)}</h3><p>${esc(m.label)} · ${esc(m.plan?.titre || '')}</p></div>${anneau(m.conf, 38)}</header>
+    ${m.plan ? `<div class="niveaux"><div><small>Entrée</small><b>${esc(m.plan.txt.entree)}</b></div><div class="s"><small>Stop −${nb(m.plan.perte, 0)} %</small><b class="down">${esc(m.plan.txt.stop)}</b></div><div class="o"><small>Objectif +${nb(m.plan.gain, 0)} %</small><b class="up">${esc(m.plan.txt.objectif)}</b></div></div>` : ''}
+    <footer><span>Mise ${esc(m.plan?.mise || '–')} · ${m.ouvert ? 'ouvert' : 'fermé'}</span>${spark(m.spark)}</footer></button>`;
+}
+
 function rendrePositions(e) {
-  const P = e.positions, R = e.resultats, F = e.pf100;
-  // 3.15 : le portefeuille d’entraînement de 100 € de l’utilisateur
-  const pf = F ? (() => { const cv = F.courbe || [], lo = Math.min(100, ...cv), hi = Math.max(100, ...cv), k = hi - lo || 1, sg = (v) => `${v >= 0 ? '+' : '−'}${nb(Math.abs(v), 2)} €`;
-    return `<div class="pf100"><h2>Mon portefeuille 100 €</h2><div class="stats"><div><small>Équité</small><b class="${sens(F.equite - 100)}">${nb(F.equite, 2)} €</b></div><div><small>Solde</small><b>${nb(F.solde, 2)} €</b></div><div><small>Perf. / équipe</small><b class="${sens(F.perf)}">${F.perf >= 0 ? '+' : ''}${nb(F.perf, 1)} %</b><small>équipe ${F.equipe >= 0 ? '+' : ''}${nb(F.equipe, 1)} %</small></div><div><small>Drawdown max</small><b>−${nb(F.dd, 1)} %</b></div></div>
-      ${F.risque > F.plafond ? `<p class="pf-alerte">Risque global ${nb(F.risque, 1)} % : au-dessus du plafond de ${F.plafond} %.</p>` : ''}
-      ${cv.length > 1 ? `<svg viewBox="0 0 100 30" preserveAspectRatio="none" class="cc ${sens(cv.at(-1) - 100)}"><polyline points="${cv.map((v, i) => `${(i / (cv.length - 1) * 100).toFixed(1)},${(27 - (v - lo) / k * 24).toFixed(1)}`).join(' ')}"/></svg>` : ''}
-      ${(F.ouvertes || []).map((o) => `<p class="pf-l"><span>${esc(o.nom)}</span><b class="${o.attente ? '' : sens(o.eur)}">${o.attente ? 'en attente' : sg(o.eur)}</b></p>`).join('')}
-      <small>${F.n} trade${F.n > 1 ? 's' : ''} terminé${F.n > 1 ? 's' : ''}, ${F.g} gagnant${F.g > 1 ? 's' : ''} · préparation au 16/12 : ${F.prep} %</small></div>`; })() : '';
+  const P = e.positions, R = e.resultats, F = e.pf100, J = e.jour100;
+  const pf = F ? `<section class="carte pf"><div class="pf-tete"><div><small>Mon portefeuille 100 €</small><b class="gros">${eu(F.equite)}</b></div><span class="chip ${J ? sens(J.pnl) : ''}">${J ? `${sg(J.pnl)}<small>aujourd’hui</small>` : ''}</span></div>
+      ${courbe(F.courbe, 100, 56)}
+      <div class="kpi4"><div><small>Solde</small><b>${eu(F.solde)}</b></div><div><small>Latent</small><b class="${sens(F.latent)}">${sg(F.latent)}</b></div><div><small>Drawdown max</small><b>−${nb(F.dd, 1)} %</b></div><div><small>Gagnants</small><b>${F.n ? `${F.g}/${F.n}` : '–'}</b></div></div>
+      ${F.risque > F.plafond ? `<p class="alerte-r">Risque global ${nb(F.risque, 1)} % : au-dessus du plafond de ${F.plafond} %.</p>` : ''}
+      ${(F.ouvertes || []).length ? `<div class="liste">${F.ouvertes.map((o) => `<div class="l"><span>${esc(o.nom)}</span><b class="${o.attente ? '' : sens(o.eur)}">${o.attente ? 'en attente' : sg(o.eur)}</b></div>`).join('')}</div>` : '<small class="aide">Aucune position dans le portefeuille 100 € : prenez un plan depuis la fiche d’un marché sur l’ordinateur, ou « Dans mes 100 € » sur une décision.</small>'}</section>` : '';
+  const carnet = P.length ? P.map((p) => {
+    const lo = Math.min(p.stop, p.objectif), hi = Math.max(p.stop, p.objectif), x = (v) => Math.max(0, Math.min(100, (v - lo) / (hi - lo || 1) * 100));
+    return `<button class="carte pos" data-id="${p.id}"><header><div><h3>${esc(p.nom)}</h3><small>${esc(p.etat)}${p.demi ? ' · moitié encaissée' : ''}${p.suiveur ? ' · stop suiveur' : ''}</small></div><div class="res"><b class="${p.ouverte ? sens(p.eur) : ''}">${p.ouverte ? esc(p.eurTxt) : '–'}</b><small>${p.ouverte ? `${p.r >= 0 ? '+' : ''}${nb(p.r, 1)} R` : 'en attente'}</small></div></header>
+      <div class="trajet"><div class="rail"></div><div class="entree" style="left:${x(p.entree)}%"></div>${p.prix != null ? `<div class="curseur" style="left:${x(p.prix)}%"></div>` : ''}</div>
+      <div class="bornes"><span class="down">Stop ${esc(p.txt.stop)}</span><span>Entrée ${esc(p.txt.entree)}</span><span class="up">Objectif ${esc(p.txt.objectif)}</span></div>${p.equipe ? `<p class="pos-eq">${esc(p.equipe)}</p>` : ''}</button>`; }).join('')
+    : '<div class="vide"><b>Aucune position dans le carnet.</b>Suivez un plan depuis l’ordinateur : il apparaîtra ici avec sa progression entre le stop et l’objectif.</div>';
+  const res = `<div class="tuiles"><div class="tuile"><small>Résultat net du carnet</small><b class="${R.termines ? sens(R.total) : ''}">${R.termines ? esc(R.totalTxt) : '–'}</b><span>${R.termines ? `${R.gagnants}/${R.termines} gagnants` : 'aucun trade terminé'}</span></div><div class="tuile"><small>Plans de Boussole</small><b>${e.boussole.taux != null ? nb(e.boussole.taux, 0) + ' %' : '–'}</b><span>de réussite${e.boussole.termines ? ` sur ${e.boussole.termines}` : ''}</span></div></div>`;
   const LB = e.labo, AP = e.apprentissage, SC = e.scenario;
-  const labo = (LB && (LB.ouvertes.length || LB.journal.length)) || AP?.n || SC ? `<div class="pf100"><h2>Labo de Claire</h2>${(LB?.ouvertes || []).map((o) => `<p class="pf-l"><span>🧪 ${esc(o.nom)}</span><b class="${sens(o.eur)}">${o.r >= 0 ? '+' : ''}${nb(o.r, 1)} R</b></p><small>${esc(o.hypothese)}</small>`).join('')}${!LB?.ouvertes?.length && LB?.journal?.[0] ? `<small>${esc(LB.journal[0].texte)}</small>` : ''}
-    ${AP?.n ? `<h2 style="margin-top:12px">Ce que l’équipe apprend</h2><small>${AP.n} positions analysées : ${AP.reussites} réussites, ${AP.echecs} échecs</small>${AP.dernieres.map((x) => `<p class="pf-l"><span>${x.motif === 'reussite' ? '✓' : x.motif === 'echec' ? '✗' : '·'} ${esc(x.marche)}</span><b>${x.r >= 0 ? '+' : ''}${nb(x.r, 1)} R</b></p><small>${esc(x.lecon)}</small>`).join('')}` : ''}
-    ${SC ? `<p class="pf-l" style="margin-top:10px"><span>Dernier scénario : ${esc(SC.nom)}</span><b class="${sens(SC.delta)}">${SC.delta >= 0 ? '+' : '−'}${nb(Math.abs(SC.delta), 2)} €</b></p>` : ''}</div>` : '';
-  set('#o-positions', `${pf}${labo}<div class="stats"><div><small>Positions en cours</small><b>${P.length}</b></div><div><small>Risque engagé</small><b>${nb(e.risque.engage, 1)} %</b></div><div><small>Résultat net (terminées)</small><b class="${R.termines ? sens(R.total) : ''}">${R.termines ? esc(R.totalTxt) : '–'}</b></div><div><small>Plans de Boussole réussis</small><b>${e.boussole.taux != null ? nb(e.boussole.taux, 0) + ' %' : '–'}</b></div></div>
-    ${P.length ? `<div class="pos-grille">${P.map((p) => {
-      const lo = Math.min(p.stop, p.objectif), hi = Math.max(p.stop, p.objectif), pos = (v) => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
-      return `<button class="pos" data-id="${p.id}"><header><div><h3>${esc(p.nom)}</h3><small>${esc(p.etat)}${p.demi ? ', moitié encaissée' : ''}${p.suiveur ? ', stop suiveur' : ''}</small></div><div class="res"><b class="${p.ouverte ? sens(p.eur) : ''}">${p.ouverte ? esc(p.eurTxt) : '–'}</b><small>${p.ouverte ? `${p.r >= 0 ? '+' : ''}${nb(p.r, 1)} R · ${pct(p.pct, 1)}` : 'en attente d’entrée'}</small></div></header>
-        <div class="trajet"><div class="rail"></div><div class="entree" style="left:${pos(p.entree)}%"></div>${p.prix != null ? `<div class="curseur" style="left:${pos(p.prix)}%"></div>` : ''}<span class="g down">Stop ${esc(p.txt.stop)}</span><span class="d up">Objectif ${esc(p.txt.objectif)}</span></div>
-        <div class="meta"><span>Entrée ${esc(p.txt.entree)}</span><span>Prix actuel ${esc(p.txt.prix)}</span><span>Depuis le ${new Date(p.depuis).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span></div>${p.equipe ? `<p class="pos-eq">${esc(p.equipe)}</p>` : ''}</button>`; }).join('')}</div>`
-      : '<div class="vide"><b>Aucune position en cours.</b>Suivez un plan depuis la fiche d’un marché sur l’ordinateur : il apparaîtra ici avec sa progression entre le stop et l’objectif.</div>'}`);
+  const labo = (LB?.ouvertes?.length || AP?.n || SC) ? `${titreSection('Labo et apprentissage')}<section class="carte liste-c">${(LB?.ouvertes || []).map((o) => `<div class="l"><span>🧪 ${esc(o.nom)}<small>${esc(o.hypothese)}</small></span><b class="${sens(o.r)}">${o.r >= 0 ? '+' : ''}${nb(o.r, 1)} R</b></div>`).join('')}
+      ${AP?.n ? AP.dernieres.map((x) => `<div class="l"><span>${x.motif === 'reussite' ? '✓' : x.motif === 'echec' ? '✗' : '·'} ${esc(x.marche)}<small>${esc(x.lecon)}</small></span><b class="${sens(x.r)}">${x.r >= 0 ? '+' : ''}${nb(x.r, 1)} R</b></div>`).join('') : ''}
+      ${SC ? `<div class="l"><span>Dernier scénario : ${esc(SC.nom)}</span><b class="${sens(SC.delta)}">${sg(SC.delta)}</b></div>` : ''}</section>` : '';
+  set('#o-positions', `<div class="grille"><div class="col">${pf}${res}</div><div class="col">${titreSection('Mon carnet', `${P.length} en cours · risque ${nb(e.risque.engage, 1)} % / ${e.risque.plafond} %`)}<div class="pile">${carnet}</div>${labo}</div></div>`);
 }
 
-// ---------- Marchés
 function rendreMarches(e) {
   const G = [['tous', 'Tous'], ...e.groupes.map(([g, l]) => [g, l.replace('Devises, crypto et matières premières', 'Macro').replace('Actions américaines', 'États-Unis').replace('Actions françaises et européennes', 'Europe').replace('Fonds indiciels (ETF) éligibles au PEA', 'ETF PEA').replace('Mes marchés ajoutés', 'Ajoutés')])];
-  set('#filtres', G.map(([k, l]) => `<button class="${S.filtre === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join(''));
   const L = e.marches.filter((m) => S.filtre === 'tous' || m.groupe === S.filtre);
-  set('#chaleur', e.groupes.filter(([g]) => L.some((m) => m.groupe === g)).map(([g, l]) => `<div class="groupe">${esc(l)}</div><div class="chaleur">${L.filter((m) => m.groupe === g).map((m) => {
-    const v = m.var ?? 0, a = Math.min(1, Math.abs(v) / 3) * 0.75 + 0.12;
-    return `<button class="ch" data-id="${m.id}" style="background:${v >= 0 ? `rgba(34,195,160,${a.toFixed(2)})` : `rgba(255,92,108,${a.toFixed(2)})`};color:${a > 0.5 ? '#fff' : 'var(--encre)'}"><b>${esc(m.nom)}</b><span>${pct(v)}</span><small>${esc(m.px)}${['achat', 'vente'].includes(m.code) ? ' · ' + esc(m.label) : ''}</small></button>`; }).join('')}</div>`).join(''));
+  const tick = `<div class="chips">${(e.bandeau || []).map((x) => `<button class="tk" data-id="${x.id}"><b>${esc(x.nom)}</b><span>${esc(x.px)}</span><i class="${sens(x.var)}">${pct(x.var)}</i></button>`).join('')}</div>`;
+  const opps = `${titreSection('Opportunités', e.opportunites.length ? 'validées par Claire' : '')}${e.opportunites.length ? `<div class="defile">${e.opportunites.map(carteOpp).join('')}</div>` : '<div class="vide"><b>Aucun plan assez solide pour l’instant.</b>Les bonnes occasions sont rares : l’équipe surveille tous les marchés.</div>'}`;
+  const surv = e.surveiller.length ? `${titreSection('À surveiller', 'il manque encore un signal')}<section class="carte liste-c">${e.surveiller.map((m) => `<button class="ligne" data-id="${m.id}"><span><b>${esc(m.nom)}</b><small>${esc(m.quoi)}</small></span><span class="px">${esc(m.px)}<i class="${sens(m.var)}">${pct(m.var)}</i></span></button>`).join('')}</section>` : '';
+  const chaleur = `${titreSection('Tous les marchés')}<div class="filtres">${G.map(([k, l]) => `<button class="${S.filtre === k ? 'on' : ''}" data-f="${k}">${esc(l)}</button>`).join('')}</div>
+    ${e.groupes.filter(([g]) => L.some((m) => m.groupe === g)).map(([g, l]) => `<div class="groupe">${esc(l)}</div><div class="chaleur">${L.filter((m) => m.groupe === g).map((m) => { const v = m.var ?? 0, a = Math.min(1, Math.abs(v) / 3) * 0.7 + 0.12;
+      return `<button class="ch" data-id="${m.id}" style="--a:${a.toFixed(2)}" data-s="${v >= 0 ? 'up' : 'down'}"><b>${esc(m.nom)}</b><span>${pct(v)}</span><small>${esc(m.px)}${['achat', 'vente'].includes(m.code) ? ' · ' + esc(m.label) : ''}</small></button>`; }).join('')}</div>`).join('')}`;
+  set('#o-marches', `${tick}<div class="grille"><div class="col">${opps}${surv}</div><div class="col">${chaleur}</div></div>`);
+}
+
+const POSI = { pour: ['Pour', 'up'], contre: ['Contre', 'down'], nuance: ['Nuance', ''] };
+function rendreEquipe(e) {
+  save('feedVu', Math.max(store('feedVu', 0), ...(e.feed || []).map((x) => x.t)));
+  const moteur = `<div class="carte moteur"><span class="point ${/ok|actif/.test(e.moteur.classe) ? 'ok' : /err/.test(e.moteur.classe) ? 'ko' : ''}"></span><span><b>${esc(e.moteur.titre)}</b><small>${esc(e.moteur.detail)}</small></span></div>`;
+  const cl = `<section class="carte climat grand">${boussole(e.climat.code, 56)}<div><small>${e.climat.ia ? 'Point marché de Claire' : 'Climat général'}</small><b>${esc(e.climat.titre)}</b></div>${e.climat.resume ? `<p>${esc(e.climat.resume)}</p>` : ''}${e.climat.prudence ? `<p class="prud">⚠︎ ${esc(e.climat.prudence)}</p>` : ''}</section>`;
+  const feed = (e.feed || []).length ? (e.feed || []).map((P) => `<article class="carte post"><header><b>${esc(P.titre)}</b><small>${esc(P.sous || '')} · ${heureC(P.t)}</small></header>
+      ${(P.messages || []).map((m) => `<div class="bulle ${m.position}"><span class="av ${m.pole}">${esc((m.nom || '?')[0])}</span><div><div class="b-tete"><b>${esc(m.nom)}</b>${m.tag ? `<small>${esc(m.tag)}</small>` : ''}<i class="pos-${m.position} ${POSI[m.position]?.[1] || ''}">${POSI[m.position]?.[0] || ''}</i></div><p>${esc(m.texte)}</p>${(m.reponses || []).map((y) => `<p class="rep"><b>${esc(y.nom)}</b> ${esc(y.texte)}</p>`).join('')}</div></div>`).join('')}
+      ${P.verdict ? `<div class="verdict-f ${P.verdict.ok ? 'ok' : 'non'}"><span class="av boss">${esc((P.verdict.nom || 'C')[0])}</span><p><b>${esc(P.verdict.nom)} ${P.verdict.ok ? 'valide' : 'refuse'}</b> ${esc(P.verdict.texte)}</p></div>` : '<small class="aide">En attente de la décision de Claire…</small>'}
+      ${P.id ? `<button class="voir" data-id="${esc(P.id)}">Voir le graphique ›</button>` : ''}</article>`).join('')
+    : '<div class="vide"><b>Pas encore de débat.</b>Avant chaque décision, les analystes débattent ici : le prudent, l’offensive, la sceptique, l’enthousiaste… puis Claire tranche.</div>';
+  const evts = [
+    ...(e.bureau || []).slice(0, 8).map((b) => ({ t: b.t, html: `<div class="fil eq"><time>${heureC(b.t)}</time><span><b>${esc(b.de)}${b.a ? ` → ${esc(b.a)}` : ''}</b><p>${esc(b.texte)}</p></span></div>` })),
+    ...(e.alertes || []).slice(0, 6).map((a) => ({ t: a.t, html: `<div class="fil"><time>${heureC(a.t)}</time><span><b>${esc(a.nom)}</b><p>${esc(a.texte)}</p></span></div>` })),
+  ].sort((a, b) => b.t - a.t);
+  const agenda = [...(e.calendrier || []).filter((c) => c.t > Date.now() - 36e5).slice(0, 4).map((c) => `<div class="fil evt"><time>${new Date(c.t).toLocaleDateString('fr-FR', { weekday: 'short' })} ${heureC(c.t)}</time><span><b>${esc(c.titre)}</b>${c.fort ? '<i class="fort">FORT</i>' : ''}<p>${c.pays === 'us' ? 'États-Unis' : 'Zone euro'}${c.prevision ? `, prévu ${esc(c.prevision)}` : ''}</p></span></div>`),
+    ...(e.resultatsEntreprises || []).slice(0, 3).map((r) => `<div class="fil evt"><time>${new Date(r.t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</time><span><b>Résultats ${esc(r.nom)}</b><p>Le prix peut bouger fortement ce jour-là.</p></span></div>`)];
+  set('#o-equipe', `<div class="grille"><div class="col">${moteur}${titreSection('Le Feed de l’équipe', 'débats avant chaque décision')}<div class="pile">${feed}</div></div>
+    <div class="col">${cl}${titreSection('Activité du bureau')}<section class="carte liste-c">${evts.length ? evts.map((x) => x.html).join('') : '<p class="rien">Rien de nouveau pour l’instant.</p>'}</section>${agenda.length ? `${titreSection('Rendez-vous')}<section class="carte liste-c">${agenda.join('')}</section>` : ''}</div></div>`);
+}
+
+function rendreDefis(e) {
+  const Pg = e.progression, Df = e.defi, Bd = e.badges || [];
+  const r = 34, c = 2 * Math.PI * r, f = Pg ? Math.max(0.02, Pg.pct / 100) : 0;
+  const niveau = `<section class="carte niveau"><svg viewBox="0 0 80 80" width="88" height="88"><circle cx="40" cy="40" r="${r}" class="fond"/><circle cx="40" cy="40" r="${r}" class="val" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 40 40)"/><text x="40" y="38" text-anchor="middle" class="n">${Pg ? Pg.niveau : '–'}</text><text x="40" y="52" text-anchor="middle" class="l">niveau</text></svg>
+      <div><small>Votre progression</small><b class="gros">${Pg ? esc(Pg.nom) : '–'}</b><span>${Pg ? `${Pg.xp} XP · ${Math.round(Pg.pct)} % vers le niveau suivant` : ''}</span><div class="serie">🔥 <b>${e.serie || 0}</b> défi${(e.serie || 0) > 1 ? 's' : ''} d’affilée</div></div></section>`;
+  const defi = Df ? `${titreSection('Défi du jour', `+${Df.xp} XP`)}<section class="carte defi ${Df.ok ? 'ok' : Df.echec ? 'non' : ''}"><div class="d-etat">${Df.ok ? '✅ Réussi' : Df.echec ? '❌ Manqué' : '🎯 À faire'}</div><h3>${esc(Df.titre)}</h3><p>${esc(Df.consigne)}</p>${Df.masterclass ? `<div class="master"><small>Masterclass</small><p>${esc(Df.masterclass)}</p></div>` : ''}</section>` : '';
+  const badges = Bd.length ? `${titreSection('Badges de discipline', `${Bd.filter((b) => b.ok).length}/${Bd.length}`)}<div class="badges">${Bd.map((b) => `<div class="badge ${b.ok ? 'ok' : ''}"><span>${esc(b.ico)}</span><small>${esc(b.nom)}</small></div>`).join('')}</div>` : '';
+  const bilan = e.bilan ? `${titreSection('Bilan de la semaine')}<section class="carte"><b>${esc(e.bilan.titre)}</b><p class="doux">${esc(e.bilan.resume)}</p></section>` : '';
+  set('#o-defis', `<div class="grille"><div class="col">${niveau}${defi}</div><div class="col">${badges}${bilan}</div></div>`);
 }
 
 // ---------- Graphique (même moteur que sur l’ordinateur)
@@ -276,37 +338,56 @@ function legende(p) {
   set('#g-legende', `<span>O <b>${nb(x.open, d)}</b></span><span>H <b>${nb(x.high, d)}</b></span><span>B <b>${nb(x.low, d)}</b></span><span>C <b class="${sens(x.close - x.open)}">${nb(x.close, d)}</b></span><span style="color:#3b9cff">MM50</span><span style="color:#f7a600">MM200</span>`);
 }
 
-// ---------- Rendu général et navigation
+// ---------- Rendu général, navigation (barre du bas, glisser du doigt), feuille du graphique
+function pastilles(e) {
+  const D = (e.decisions || []).filter((x) => x.cle && !S.faits[x.cle]).length, vu = store('feedVu', 0), nf = (e.feed || []).filter((x) => x.t > vu).length;
+  const n = { accueil: D || '', positions: e.compteurs.pos + (e.pf100?.ouvertes?.length || 0) || '', marches: e.compteurs.opp || '', equipe: S.onglet === 'equipe' ? '' : nf || '', defis: e.defi && !e.defi.ok && !e.defi.echec ? '•' : '' };
+  ORDRE.forEach((k) => { const i = $('#n-' + k); if (i) i.textContent = n[k]; });
+}
 function rendre() {
   const e = S.e; if (!e) return;
-  $('#n-pos').textContent = e.compteurs.pos || '';
-  const L = e.bandeau, html = L.map((x) => `<span class="tk"><b>${esc(x.nom)}</b>${esc(x.px)} <span class="${sens(x.var)}">${pct(x.var)}</span></span>`).join('');
-  if ($('#piste')._h !== html) { $('#piste')._h = html; $('#piste').innerHTML = html + html; }
-  ({ bord: rendreBord, positions: rendrePositions, marches: rendreMarches, graphique: rendreGraphique }[S.onglet])(e);
+  try { ({ accueil: rendreAccueil, positions: rendrePositions, marches: rendreMarches, equipe: rendreEquipe, defis: rendreDefis }[S.onglet] || rendreAccueil)(e); } catch (err) { console.error(err); }
+  pastilles(e);
+  if (!$('#feuille').hidden) rendreGraphique();
 }
-function onglet(o) {
-  S.onglet = o; save('onglet', o);
-  $$('#onglets button').forEach((b) => b.classList.toggle('on', b.dataset.o === o));
-  $$('.onglet').forEach((s) => { s.hidden = s.id !== 'o-' + o; });
-  if (o === 'graphique') S.cleG = null;
-  rendre();
+function onglet(o, sens0) {
+  if (!ORDRE.includes(o)) o = 'accueil';
+  const av = ORDRE.indexOf(S.onglet), ap = ORDRE.indexOf(o);
+  S.onglet = o; save('onglet2', o);
+  $$('#barre button').forEach((b) => b.classList.toggle('on', b.dataset.o === o));
+  $$('.onglet').forEach((s) => { const ici = s.id === 'o-' + o; s.hidden = !ici; if (ici) { s.classList.remove('de-g', 'de-d'); void s.offsetWidth; s.classList.add((sens0 ?? ap - av) >= 0 ? 'de-d' : 'de-g'); } });
+  $('#vues').scrollTop = 0; rendre();
 }
-$('#onglets').onclick = (e) => { const b = e.target.closest('[data-o]'); if (b) onglet(b.dataset.o); };
+function ouvrirGraphique(id) {
+  S.id = id; S.tf = 'j'; S.cleG = null; $('#feuille').hidden = false; document.body.classList.add('feuille-ouverte');
+  history.pushState({ feuille: 1 }, ''); vibre(); rendreGraphique();
+}
+function fermerGraphique(depuisHistorique) { if ($('#feuille').hidden) return; $('#feuille').hidden = true; document.body.classList.remove('feuille-ouverte'); if (!depuisHistorique && history.state?.feuille) history.back(); }
+addEventListener('popstate', () => fermerGraphique(true));
+$('#f-fermer').onclick = () => fermerGraphique();
+$('#barre').onclick = (e) => { const b = e.target.closest('[data-o]'); if (!b) return; vibre(); if (b.dataset.o === S.onglet) { $('#vues').scrollTo({ top: 0, behavior: 'smooth' }); return; } onglet(b.dataset.o); };
+$('#etat-lien').onclick = () => { vibre(); toast('Actualisation…'); S.erreurs = 0; rafraichir(); };
 document.addEventListener('click', (e) => {
-  const a = e.target.closest('[data-aller]'); if (a) return onglet(a.dataset.aller);
+  const ag = e.target.closest('[data-agir]'); if (ag) { e.stopPropagation(); return agir(ag.dataset.agir, ag.dataset.cle, ag); }
+  const pl = e.target.closest('[data-plier]'); if (pl && !e.target.closest('button')) { S.ouverts[pl.dataset.plier] = !S.ouverts[pl.dataset.plier]; return rendre(); }
+  const a = e.target.closest('[data-aller]'); if (a) { vibre(); return onglet(a.dataset.aller); }
   const f = e.target.closest('[data-f]'); if (f) { S.filtre = f.dataset.f; return rendre(); }
-  const t = e.target.closest('#g-tf [data-tf]'); if (t) { S.tf = t.dataset.tf; S.cleG = null; return rendre(); }
-  const pas = e.target.closest('[data-pas]'); if (pas && S.liste) { S.id = S.liste[(S.i + +pas.dataset.pas + S.liste.length) % S.liste.length]; S.cleG = null; return rendre(); }
-  const m = e.target.closest('[data-id]'); if (m) { S.id = m.dataset.id; S.tf = 'j'; return onglet('graphique'); }
+  const t = e.target.closest('#g-tf [data-tf]'); if (t) { S.tf = t.dataset.tf; S.cleG = null; return rendreGraphique(); }
+  const pas = e.target.closest('[data-pas]'); if (pas && S.liste) { S.id = S.liste[(S.i + +pas.dataset.pas + S.liste.length) % S.liste.length]; S.cleG = null; return rendreGraphique(); }
+  const m = e.target.closest('[data-id]'); if (m) return ouvrirGraphique(m.dataset.id);
 });
-// plein écran et orientation (Android) ; sur iPhone, l’ajout à l’écran d’accueil donne déjà le plein écran
-$('#plein').onclick = async () => {
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else { await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); await screen.orientation?.lock?.('landscape').catch(() => {}); }
-  } catch {}
-};
-if (!document.documentElement.requestFullscreen || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches) $('#plein').hidden = true;
+// glisser horizontalement pour changer d’onglet (sauf dans les listes qui défilent sur le côté)
+(() => {
+  let x0 = 0, y0 = 0, t0 = 0, ok = false;
+  const z = $('#vues');
+  z.addEventListener('touchstart', (e) => { const t = e.touches[0]; ok = e.touches.length === 1 && !e.target.closest('.defile,.chips,.filtres'); x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); }, { passive: true });
+  z.addEventListener('touchend', (e) => {
+    if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < Math.abs(dx) * 0.5 && Date.now() - t0 < 600) { const i = ORDRE.indexOf(S.onglet) + (dx < 0 ? 1 : -1); if (i >= 0 && i < ORDRE.length) { vibre(); onglet(ORDRE[i]); } }
+  }, { passive: true });
+})();
+// en-tête qui se condense quand on fait défiler
+$('#vues').addEventListener('scroll', () => document.body.classList.toggle('defile-bas', $('#vues').scrollTop > 12), { passive: true });
 if (DISTANT) { S.tf = 'j'; $$('#g-tf [data-tf]').forEach((b) => { b.hidden = b.dataset.tf !== 'j'; }); }
-onglet(S.onglet);
+onglet(S.onglet, 0);
 boucle();

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0b1424">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -16,55 +16,27 @@
 </head>
 <body>
 <header id="haut">
-  <div class="marque"><img src="icone-192.png" alt=""><b>Boussole</b></div>
-  <nav id="onglets">
-    <button data-o="bord" class="on">Tableau de bord</button>
-    <button data-o="positions">Positions <i id="n-pos"></i></button>
-    <button data-o="marches">Marchés</button>
-    <button data-o="graphique">Graphique</button>
-  </nav>
-  <div class="lien-pc"><span id="pc-point" class="point"></span><span id="pc-txt">Connexion…</span><b id="heure"></b><button id="plein" title="Plein écran" aria-label="Plein écran"><svg viewBox="0 0 20 20"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg></button></div>
+  <div class="marque"><img src="icone-192.png" alt=""><div><b id="h-titre">Boussole</b><small id="pc-txt">Connexion…</small></div></div>
+  <button id="etat-lien" class="pilule-lien" aria-label="Actualiser"><span id="pc-point" class="point"></span><b id="heure"></b></button>
 </header>
 
-<main>
-  <section id="o-bord" class="onglet">
-    <div class="col">
-      <div class="carte" id="briefing" hidden></div>
-      <div class="carte" id="defi" hidden></div>
-      <div class="carte climat" id="climat"></div>
-      <div class="compteurs" id="compteurs"></div>
-      <div class="carte petite" id="moteur"></div>
-    </div>
-    <div class="col large">
-      <div class="titre"><h2 id="t-opp">Opportunités</h2><small id="s-opp"></small></div>
-      <div class="defile" id="opps"></div>
-      <div class="titre"><h2>À surveiller</h2><small>il manque encore un signal</small></div>
-      <div class="carte liste" id="surv"></div>
-    </div>
-    <div class="col">
-      <div class="carte" id="risque"></div>
-      <div class="carte" id="perf"></div>
-      <div class="titre"><h2>Équipe, alertes et rendez-vous</h2></div>
-      <div class="carte liste" id="fil"></div>
-    </div>
-  </section>
-
+<main id="vues">
+  <section id="o-accueil" class="onglet"></section>
   <section id="o-positions" class="onglet" hidden></section>
-
-  <section id="o-marches" class="onglet" hidden>
-    <div class="filtres" id="filtres"></div>
-    <div id="chaleur"></div>
-  </section>
-
-  <section id="o-graphique" class="onglet" hidden>
-    <div class="carte graph"><div class="g-tete"><div id="g-nom"></div><div class="seg" id="g-tf"><button data-tf="j" class="on">1 J</button><button data-tf="h4">4 h</button><button data-tf="h">1 h</button><button data-tf="s">1 S</button></div></div><div id="g-legende"></div><div id="graph"></div></div>
-    <div class="carte g-info" id="g-info"></div>
-  </section>
+  <section id="o-marches" class="onglet" hidden></section>
+  <section id="o-equipe" class="onglet" hidden></section>
+  <section id="o-defis" class="onglet" hidden></section>
 </main>
 
-<div id="bandeau"><div class="piste" id="piste"></div></div>
+<nav id="barre" aria-label="Sections"><button data-o="accueil"><svg viewBox="0 0 20 20"><path d="M3.5 10 10 4l6.5 6"/><path d="M5.5 8.5V16h9V8.5"/><path d="M8.5 16v-4h3v4"/></svg><span>Accueil</span><i class="pastille-n" id="n-accueil"></i></button><button data-o="positions"><svg viewBox="0 0 20 20"><rect x="3.5" y="4" width="13" height="12.5" rx="2.5"/><path d="M7 12.5l2-2.5 2 1.5 2.5-3.5"/></svg><span>Positions</span><i class="pastille-n" id="n-positions"></i></button><button data-o="marches"><svg viewBox="0 0 20 20"><path d="M3 15.5 7.5 10l3 3L17 5.5"/><path d="M13 5.5h4v4"/></svg><span>Marchés</span><i class="pastille-n" id="n-marches"></i></button><button data-o="equipe"><svg viewBox="0 0 20 20"><circle cx="10" cy="6.2" r="2.4"/><circle cx="4.8" cy="12" r="1.9"/><circle cx="15.2" cy="12" r="1.9"/><path d="M6.4 16.5c.7-2 2-3 3.6-3s2.9 1 3.6 3"/></svg><span>Équipe</span><i class="pastille-n" id="n-equipe"></i></button><button data-o="defis"><svg viewBox="0 0 20 20"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z"/><path d="M6 5H3.5v1a2.5 2.5 0 0 0 2.6 2.5M14 5h2.5v1a2.5 2.5 0 0 1-2.6 2.5M10 11v2.5M7 16.5h6M8 13.5h4v3H8z"/></svg><span>Défis</span><i class="pastille-n" id="n-defis"></i></button></nav>
 
-<div id="tournez" class="voile"><svg viewBox="0 0 64 64"><rect x="20" y="8" width="24" height="44" rx="4"/><path d="M50 30a20 20 0 0 1-12 22M44 50l-6 2 2-6"/></svg><b>Tournez votre téléphone</b><p>Le tableau de bord s’affiche à l’horizontale.</p></div>
+<div id="feuille" class="feuille" hidden aria-modal="true" role="dialog">
+  <div class="f-tete"><button id="f-fermer" class="rond" aria-label="Fermer">✕</button><div id="g-nom"></div><div class="seg" id="g-tf"><button data-tf="j" class="on">1J</button><button data-tf="h4">4h</button><button data-tf="h">1h</button><button data-tf="s">1S</button></div></div>
+  <div id="g-legende"></div><div id="graph"></div>
+  <div class="f-info" id="g-info"></div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
 <div id="connexion" class="voile" hidden><img src="icone-192.png" alt="">
   <div id="cx-epingler" class="cx" hidden><small>Étape 1 sur 2</small><b>Épinglez Boussole sur l’écran d’accueil</b>
     <p id="cx-comment"></p><p>Ouvrez ensuite Boussole depuis sa nouvelle icône : le code de connexion vous sera demandé à ce moment-là.</p>
