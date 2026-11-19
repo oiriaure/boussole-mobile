@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icone-192.png">
 <link rel="stylesheet" href="mobile.css">
+<link rel="stylesheet" href="tableau.css">
 <title>Boussole</title>
 </head>
 <body>
@@ -21,14 +22,15 @@
 </header>
 
 <main id="vues">
-  <section id="o-accueil" class="onglet"></section>
+  <section id="o-trader" class="onglet"></section>
+  <section id="o-accueil" class="onglet" hidden></section>
   <section id="o-positions" class="onglet" hidden></section>
   <section id="o-marches" class="onglet" hidden></section>
   <section id="o-equipe" class="onglet" hidden></section>
   <section id="o-defis" class="onglet" hidden></section>
 </main>
 
-<nav id="barre" aria-label="Sections"><button data-o="accueil"><svg viewBox="0 0 20 20"><path d="M3.5 10 10 4l6.5 6"/><path d="M5.5 8.5V16h9V8.5"/><path d="M8.5 16v-4h3v4"/></svg><span>Accueil</span><i class="pastille-n" id="n-accueil"></i></button><button data-o="positions"><svg viewBox="0 0 20 20"><rect x="3.5" y="4" width="13" height="12.5" rx="2.5"/><path d="M7 12.5l2-2.5 2 1.5 2.5-3.5"/></svg><span>Positions</span><i class="pastille-n" id="n-positions"></i></button><button data-o="marches"><svg viewBox="0 0 20 20"><path d="M3 15.5 7.5 10l3 3L17 5.5"/><path d="M13 5.5h4v4"/></svg><span>Marchés</span><i class="pastille-n" id="n-marches"></i></button><button data-o="equipe"><svg viewBox="0 0 20 20"><circle cx="10" cy="6.2" r="2.4"/><circle cx="4.8" cy="12" r="1.9"/><circle cx="15.2" cy="12" r="1.9"/><path d="M6.4 16.5c.7-2 2-3 3.6-3s2.9 1 3.6 3"/></svg><span>Équipe</span><i class="pastille-n" id="n-equipe"></i></button><button data-o="defis"><svg viewBox="0 0 20 20"><path d="M6 3.5h8v3.5a4 4 0 0 1-8 0z"/><path d="M6 5H3.5v1a2.5 2.5 0 0 0 2.6 2.5M14 5h2.5v1a2.5 2.5 0 0 1-2.6 2.5M10 11v2.5M7 16.5h6M8 13.5h4v3H8z"/></svg><span>Défis</span><i class="pastille-n" id="n-defis"></i></button></nav>
+<nav id="barre" aria-label="Sections"><button data-o="trader"><svg viewBox="0 0 20 20"><path d="M3 15.5 7.5 11l3 3 6.5-7"/><path d="M13 7h4v4"/></svg><span>Trader</span><i class="pastille-n" id="n-trader"></i></button><button data-o="accueil"><svg viewBox="0 0 20 20"><path d="M3.5 10 10 4l6.5 6"/><path d="M5.5 8.5V16h9V8.5"/><path d="M8.5 16v-4h3v4"/></svg><span>Accueil</span><i class="pastille-n" id="n-accueil"></i></button><button data-o="positions"><svg viewBox="0 0 20 20"><rect x="3.5" y="4" width="13" height="12.5" rx="2.5"/><path d="M7 12.5l2-2.5 2 1.5 2.5-3.5"/></svg><span>Positions</span><i class="pastille-n" id="n-positions"></i></button><button data-o="marches"><svg viewBox="0 0 20 20"><path d="M3 15.5 7.5 10l3 3L17 5.5"/><path d="M13 5.5h4v4"/></svg><span>Marchés</span><i class="pastille-n" id="n-marches"></i></button><button data-o="equipe"><svg viewBox="0 0 20 20"><circle cx="10" cy="6.2" r="2.4"/><circle cx="4.8" cy="12" r="1.9"/><circle cx="15.2" cy="12" r="1.9"/><path d="M6.4 16.5c.7-2 2-3 3.6-3s2.9 1 3.6 3"/></svg><span>Équipe</span><i class="pastille-n" id="n-equipe"></i></button></nav>
 
 <div id="feuille" class="feuille" hidden aria-modal="true" role="dialog">
   <div class="f-tete"><button id="f-fermer" class="rond" aria-label="Fermer">✕</button><div id="g-nom"></div><div class="seg" id="g-tf"><button data-tf="j" class="on">1J</button><button data-tf="h4">4h</button><button data-tf="h">1h</button><button data-tf="s">1S</button></div></div>
@@ -53,6 +55,7 @@
 <div id="bandeau-pc" hidden></div>
 
 <script src="lightweight-charts.js"></script>
+<script src="tableau.js"></script>
 <script src="mobile.js"></script>
 </body>
 </html>

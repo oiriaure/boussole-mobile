@@ -14,7 +14,7 @@ const heureC = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit',
 // Le téléphone reçoit alors sa propre clé d’accès, gardée dans l’app épinglée.
 try { localStorage.removeItem('jeton'); } catch {} // ancien système (3.4)
 let JETON = store('appareil', '');
-const S = { e: store('dernier', null), recu: 0, erreurs: 0, onglet: store('onglet2', 'accueil'), faits: {}, ouverts: {}, filtre: 'tous', id: store('gid', 'spx'), tf: 'j', chart: null };
+const S = { e: store('dernier', null), recu: 0, erreurs: 0, onglet: store('onglet3', 'trader'), faits: {}, ouverts: {}, filtre: 'tous', id: store('gid', 'spx'), tf: 'j', chart: null };
 const EPINGLEE = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -163,7 +163,8 @@ function spark(v) {
 const pastille = (m) => `<span class="pastille c-${m.code}">${esc(m.label)}${['achat', 'vente', 'surveiller'].includes(m.code) && m.conf ? ` ${m.conf} %` : ''}</span>`;
 
 // ---------- 3.18 : DASHBOARD MOBILE (5 onglets en bas, cartes compactes, décisions en un clic)
-const ORDRE = ['accueil', 'positions', 'marches', 'equipe', 'defis'];
+const ORDRE = ['trader', 'accueil', 'positions', 'marches', 'equipe'];
+function rendreTrader(e) { if (typeof tableauHTML === 'function') set('#o-trader', tableauHTML(e.trader)); }
 const eu = (v, d = 2) => (v == null || !isFinite(v) ? '–' : nb(v, d) + ' €');
 const sg = (v, d = 2) => (v == null || !isFinite(v) ? '–' : (v >= 0 ? '+' : '−') + nb(Math.abs(v), d) + ' €');
 const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.m); toast.m = setTimeout(() => el.classList.remove('on'), 3200); };
@@ -341,19 +342,19 @@ function legende(p) {
 // ---------- Rendu général, navigation (barre du bas, glisser du doigt), feuille du graphique
 function pastilles(e) {
   const D = (e.decisions || []).filter((x) => x.cle && !S.faits[x.cle]).length, vu = store('feedVu', 0), nf = (e.feed || []).filter((x) => x.t > vu).length;
-  const n = { accueil: D || '', positions: e.compteurs.pos + (e.pf100?.ouvertes?.length || 0) || '', marches: e.compteurs.opp || '', equipe: S.onglet === 'equipe' ? '' : nf || '', defis: e.defi && !e.defi.ok && !e.defi.echec ? '•' : '' };
+  const n = { trader: '', accueil: D || '', positions: e.compteurs.pos + (e.pf100?.ouvertes?.length || 0) || '', marches: e.compteurs.opp || '', equipe: S.onglet === 'equipe' ? '' : nf || '', defis: e.defi && !e.defi.ok && !e.defi.echec ? '•' : '' };
   ORDRE.forEach((k) => { const i = $('#n-' + k); if (i) i.textContent = n[k]; });
 }
 function rendre() {
   const e = S.e; if (!e) return;
-  try { ({ accueil: rendreAccueil, positions: rendrePositions, marches: rendreMarches, equipe: rendreEquipe, defis: rendreDefis }[S.onglet] || rendreAccueil)(e); } catch (err) { console.error(err); }
+  try { ({ trader: rendreTrader, accueil: rendreAccueil, positions: rendrePositions, marches: rendreMarches, equipe: rendreEquipe, defis: rendreDefis }[S.onglet] || rendreAccueil)(e); } catch (err) { console.error(err); }
   pastilles(e);
   if (!$('#feuille').hidden) rendreGraphique();
 }
 function onglet(o, sens0) {
   if (!ORDRE.includes(o)) o = 'accueil';
   const av = ORDRE.indexOf(S.onglet), ap = ORDRE.indexOf(o);
-  S.onglet = o; save('onglet2', o);
+  S.onglet = o; save('onglet3', o);
   $$('#barre button').forEach((b) => b.classList.toggle('on', b.dataset.o === o));
   $$('.onglet').forEach((s) => { const ici = s.id === 'o-' + o; s.hidden = !ici; if (ici) { s.classList.remove('de-g', 'de-d'); void s.offsetWidth; s.classList.add((sens0 ?? ap - av) >= 0 ? 'de-d' : 'de-g'); } });
   $('#vues').scrollTop = 0; rendre();
